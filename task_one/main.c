@@ -1,129 +1,87 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<ctype.h>
-#include<sys/stat.h>
-#include<time.h>
-
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 typedef struct{
-    char t[32];
-    char d[10][32];
-    char c[256];
+    char t[32];//target
+    char d[10][32];   //dependency
+    char c[256];      
+
 }Rule;
 
-typedef struct
-{
-    char tar[32];
-    int dep[10];//依赖的目标的位置
-    int degree;
-    int flag;/* data */
-}Graph; 
-typedef struct
-{
-    Graph g[100];
-    int top;/* data */
-}Stack;
+int  main(){
 
-void Setout(Stack* s)
-{
-    int i=1;
-    while(i<s->top)
-    {
-        printf("Node %d: %s (degree=%d)\n", i, s->g[i].tar, s->g[i].degree);
-        int j=0;
-        while (j<s->g[i].degree)
-        {
-            printf("  -> %s\n", s->g[s->g[i].dep[j]].tar);
-            j++;
-        }
-        i++;
-    }
-    
+	int ti=-1,ci=0;
+	char* s;
+	char str[256];
+	int i,j,m,n;
+
+	FILE *fp;	
+	
+        int flag=1; //测试过程似乎没有输入-v过程。
+	if(flag==1){
+		fp=fopen("Makefile_claered","r");
+	}
+	else{
+		fp=fopen("Makefile","r");
+	}
+	if(!fp)
+	{
+		perror("Makefile文件不存在");
+		exit(1);
+	}
+	while(fgets(str,sizeof(str),fp))
+	{
+		s=strchr(str,':');
+		if(s!=NULL){ //如果有冒号，则ti++
+			ti++;			
+		}
+		else{
+			continue;
+		}
+		for(i=0;(str+i)!=s;i++)
+		{
+			r[ti].t[i]=str[i];
+		}
+		r[ti].t[i]='\0';
+		for(j=0;j<ti;j++)
+		{
+			if(strcmp(r[j].t,r[ti].t)==0)
+				printf("Duplicate target definition '%s'\n",r[ti].t);
+		}
+		//下面处理依赖
+		if(*(s+1)==' ') s=s+2;  //第一个依赖前面可能有个空格
+		else s=s+1;
+		i=0;m=0;n=0;
+		while(*(s+i)!='\0')
+		{		
+			if(*(s+i)==' '|| ( *(s+i)=='\n'&& *(s+i-1)!=' '))
+			{
+				r[ti].d[m][n]='\0';//依赖的起始位置
+                            if(access(r[ti].d[m],F_OK)==-1){
+                                            printf("Invalid dependency '%s'\n",r[ti].d[m]);}
+				n=0;
+				i++;
+				m++;
+				continue;
+			}
+			else {r[ti].d[m][n++]=*(s+i);i++;}
+		}//把依赖分成各个目标和文件            
+	        count[ti]=m;  //记录每行有多少个依赖
+		for(j=0;j<m;j++){
+			printf("%s  ",r[ti].d[j]);
+			if(strchr(r[ti].d[j],'.')==NULL)
+			{
+				printf("Invalid dependency '%s'\n",r[ti].d[j]);
+			    break;
+			}
+		}
+	}
+	fclose(fp);
+
+
+return 0;
+
+
+
 }
-/*void Setout(Graph g[100],int i)
-{
-    printf("Node %d: %s (degree=%d)\n", i, g[i].tar, g[i].degree);
-        int j=0;
-        while (j<g[i].degree)
-        {
-            printf("  -> %s\n", g[g[i].dep[j]].tar);
-            j++;
-        }
-    
-}*/
-void DFS(Stack* s,Graph g[100],int i)
-{
-    if(g[i].flag==1)
-    return;
-    g[i].flag=1;
-    int j;
-    for(j=0;g[i].dep[j]!=0;j++)
-    {
-        DFS(s,g,g[i].dep[j]);
-    }
-    s->g[s->top]=g[i];
-    s->top++; 
-    return;
-}
-void Three_1_2(Rule r[100],Graph g[100])
-{
-    int i;
-    Stack* s;
-    s=(Stack*)malloc(sizeof(Stack));
-    s->top=0;
-    struct stat st;
-    for(i=0;r[i].t[0]!='\0';i++)
-    {
-        strcpy(g[i+1].tar,r[i].t);
-    }
-    for(i=0;r[i].t[0]!='\0';i++)
-    {
-		 g[i+1].degree = 0; 
-        for(int j=0;r[i].d[j][0]!='\0';j++)
-        {
-            for(int k=0;r[k].t[0]!='\0';k++)
-            {
-                if(strcmp(r[k].t,r[i].d[j])==0)
-                {
-					g[i+1].dep[g[i+1].degree] = k+1;  // 使用 degree 作为索引
-                    g[i+1].degree++;;
-                    break;
-                }
-            }
-            g[i+1].degree=j+1;
-        }
-    }//给依赖定位
-    i=1;
-    while(g[i].tar[0]!='\0')
-    {
-        if(g[i].flag==1)
-        {
-            i++;
-            continue;
-        }
-        DFS(s,g,i);
-		i++;
-    }
-    //for(i=1;g[i].tar[0]!='\0';i++)
-    //{
-        Setout(s);
-    //}
-}
-int main()
-{
-	Rule r[100];
-	Graph *g;
-	g=(Graph*)malloc(100*sizeof(Graph));
-	strcpy(r[0].t, "app");
-    strcpy(r[0].d[0], "dep1");
-    strcpy(r[0].d[1], "dep2");
-    strcpy(r[3].t, "dep1");
-    strcpy(r[2].t, "dep2");
-    strcpy(r[1].t, "dep3");
-    strcpy(r[1].d[0], "dep5");
-    strcpy(r[2].d[0], "dep3");
-    strcpy(r[2].d[1], "dep4");
-    strcpy(r[4].t, "dep5");
-    strcpy(r[5].t, "dep4");
-	Three_1_2(r,g);
-	return 0;}
